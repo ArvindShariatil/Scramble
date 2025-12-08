@@ -18,9 +18,11 @@ const version = __VERSION__ || '1.0.0'
 const buildTime = __BUILD_TIME__ || new Date().toISOString()
 const isProduction = __PROD__ || false
 
-console.log(`🎮 Scramble Game v${version} - ${isProduction ? 'Production' : 'Development'} Mode`)
-console.log(`📦 Built: ${buildTime}`)
-console.log('🚀 Epic 4 Complete: Sound Effects + Analytics + Production Deployment')
+if (!isProduction) {
+  console.log(`🎮 Scramble Game v${version} - Development Mode`)
+  console.log(`📦 Built: ${buildTime}`)
+  console.log('🚀 Epic 4 Complete: Sound Effects + Analytics + Production Deployment')
+}
 
 // Start performance monitoring
 analytics.startTiming('load_time')
@@ -46,29 +48,16 @@ const gameUI = new GameUI()
 let timerUI: TimerUI | null = null
 let scoreUI: ScoreUI | null = null
 
-console.log('🚀 Epic 2: API Integration & Validation Systems Active')
-console.log('✅ SCRAM-006: WordsAPI Integration')
-console.log('✅ SCRAM-008: Anagram Solution Validation')
-
-// Subscribe to state changes for debugging
-gameStore.subscribe((state) => {
-  console.log('🔄 Game state updated:', state)
+// Subscribe to state changes
+gameStore.subscribe((_state) => {
+  // State updated
 })
 
 // Demo the anagram generation system
 function demonstrateAnagramSystem() {
-  console.log('📊 Anagram System Demo:')
-  console.log(`Total anagrams available: ${getTotalAnagramCount()}`)
-  
   // Get a random anagram
   const anagram = anagramGenerator.getAnagram()
   if (anagram) {
-    console.log('🎯 Random anagram:', {
-      scrambled: anagram.scrambled,
-      difficulty: anagram.difficulty,
-      category: anagram.category,
-      hint: anagram.hints
-    })
     
     // Update game state with the anagram
     gameStore.updateState({
@@ -82,12 +71,9 @@ function demonstrateAnagramSystem() {
 
 // Timer system demonstration
 function demonstrateTimerSystem() {
-  console.log('⏱️ Timer System Demo:')
-  
   const timer = gameStore.getTimer()
   if (timer) {
-    console.log('Timer status:', timer.getStatus())
-    console.log('Time remaining:', timer.getRemaining())
+    // Timer active
   }
   
   // Start a new 60-second round
@@ -97,50 +83,35 @@ function demonstrateTimerSystem() {
 
 function pauseTimer() {
   gameStore.pauseTimer()
-  console.log('⏸️ Timer paused')
 }
 
 function resumeTimer() {
   gameStore.resumeTimer()
-  console.log('▶️ Timer resumed')
 }
 
 function resetTimer() {
   gameStore.resetTimer()
-  console.log('🔄 Timer reset')
 }
 
 // Scoring system demonstration
 function demonstrateScoringSystem() {
-  console.log('🏆 Scoring System Demo:')
-  
   const state = gameStore.getState()
   if (state.solution) {
     const breakdown = gameStore.submitCorrectAnswer(state.solution)
-    console.log('Score breakdown:', breakdown)
-    console.log('Updated stats:', gameStore.getScoreStats())
-  } else {
-    console.log('No anagram to solve - generate one first!')
   }
 }
 
 function simulateIncorrectAnswer() {
   gameStore.submitIncorrectAnswer()
-  console.log('❌ Incorrect answer - streak reset')
 }
 
 // SCRAM-008: Anagram validation demonstration
 async function demonstrateAnagramValidation() {
-  console.log('🔍 Anagram Validation Demo (SCRAM-008):')
-  
   const state = gameStore.getState()
   if (!state.currentAnagram || !state.solution) {
-    console.log('No anagram available - generating one first!')
     demonstrateAnagramSystem()
     return
   }
-  
-  console.log(`\n📝 Current puzzle: "${state.currentAnagram}" → "${state.solution}"`)
   
   // Test cases for validation
   const testCases = [

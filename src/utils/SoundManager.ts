@@ -28,7 +28,6 @@ export class SoundManager {
   constructor() {
     this.initializeAudioContext();
     this.loadConfig();
-    console.log('🔊 SoundManager initialized - Calm Playground audio');
   }
 
   private initializeAudioContext(): void {
@@ -208,16 +207,12 @@ export class SoundManager {
    * Test all sounds for configuration
    */
   public async testSounds(): Promise<void> {
-    console.log('🎵 Testing sound system...');
-    
     await this.playKeyPress();
     setTimeout(() => this.playButtonClick(), 300);
     setTimeout(() => this.playCorrect(), 600);
     setTimeout(() => this.playIncorrect(), 1200);
     setTimeout(() => this.playSkip(), 1800);
     setTimeout(() => this.playComplete(), 2400);
-    
-    console.log('🎵 Sound test complete');
   }
 }
 

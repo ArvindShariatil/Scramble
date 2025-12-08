@@ -44,8 +44,6 @@ export class GameUI {
   private modeModalShown: boolean = false;
 
   constructor() {
-    console.log('🎨 GameUI initialized - Calm Playground design');
-    
     // Start analytics session
     analytics.track(AnalyticsEvent.SESSION_STARTED, {
       soundEnabled: true, // Default assumption, will be updated by settings
@@ -151,7 +149,7 @@ export class GameUI {
         this.handleSubmit(value);
       },
       onClear: () => {
-        console.log('🧹 Input cleared');
+        // Input cleared
       }
     };
 
@@ -173,18 +171,9 @@ export class GameUI {
       submitBtn.disabled = !state.isComplete;
       submitBtn.classList.toggle('btn-ready', state.isComplete);
     }
-    
-    console.log('🎯 Input state:', {
-      value: state.value,
-      isValid: state.isValid,
-      isComplete: state.isComplete,
-      message: state.validationMessage
-    });
   }
 
   private handleSubmit(value: string): void {
-    console.log('🚀 Submitting answer:', value);
-    
     // Analytics tracking for attempt
     analytics.track(AnalyticsEvent.ANAGRAM_ATTEMPTED, {
       word: this.getCurrentWord(),
@@ -471,8 +460,6 @@ export class GameUI {
       await this.generateNewAnagram();
       this.resetGameState();
     }, 500); // Brief delay for smooth transition
-    
-    console.log(`🎯 Anagram skipped (${this.skipCount}/${this.maxSkips})`);
   }
 
   private showSkipFeedback(): void {
@@ -727,8 +714,6 @@ export class GameUI {
     const normalizedAttempt = attempt.toUpperCase().trim();
     const expectedWord = this.getCurrentWord().toUpperCase().trim();
     
-    console.log(`🔍 Validation: "${normalizedAttempt}" === "${expectedWord}"`);
-    
     // Case-insensitive comparison
     return normalizedAttempt === expectedWord;
   }
@@ -799,24 +784,18 @@ export class GameUI {
     }
     
     try {
-      console.log(`🎲 Requesting anagram at difficulty ${targetDifficulty} (mode: ${this.gameMode})`);
-      
       // Get anagram from Epic 6 generator (API with cache + curated fallback)
       const anagram = await this.anagramGenerator.getAnagram({
         difficulty: targetDifficulty,
         excludeUsed: true
       });
       
-      console.log(`📦 Received anagram:`, anagram);
-      
       if (!anagram) {
-        console.error('❌ Failed to generate anagram');
         return;
       }
       
       // Validate anagram has scrambled letters
       if (!anagram.scrambled || anagram.scrambled.trim().length === 0) {
-        console.error('❌ Invalid anagram - no scrambled letters:', anagram);
         return;
       }
       
@@ -827,11 +806,8 @@ export class GameUI {
       
       // Defensive check - ensure we have letters
       if (this.currentScrambledLetters.length === 0) {
-        console.error('❌ No scrambled letters after split:', this.currentAnagram.scrambled);
         return;
       }
-      
-      console.log(`📝 Scrambled letters array:`, this.currentScrambledLetters);
       
       this.updateScrambledDisplay();
       
@@ -851,10 +827,7 @@ export class GameUI {
         source: (anagram as any).source || 'unknown'
       });
       
-      console.log(`🎯 New anagram: ${this.currentAnagram.scrambled} (Solution: ${this.currentAnagram.solution}, Difficulty: ${targetDifficulty})`);
-      
     } catch (error) {
-      console.error('❌ Error generating anagram:', error);
       // Show user-friendly error
       this.showValidationFeedback(false, 'Unable to generate word. Please check your connection.');
     }
@@ -866,12 +839,10 @@ export class GameUI {
   private updateScrambledDisplay(): void {
     const letterContainer = this.scrambledContainer.querySelector('.scrambled-letters');
     if (!letterContainer) {
-      console.error('❌ Letter container not found');
       return;
     }
     
     if (!this.currentScrambledLetters || this.currentScrambledLetters.length === 0) {
-      console.error('❌ No scrambled letters to display');
       return;
     }
     
@@ -888,8 +859,6 @@ export class GameUI {
         ${lettersHTML}
       </div>
     `;
-    
-    console.log(`✅ Display updated with ${this.currentScrambledLetters.length} letters`);
     
     // Update hint text
     this.updateHintDisplay();
@@ -1201,8 +1170,6 @@ export class GameUI {
       value: mode,
       difficulty: mode === 'learning' ? this.selectedLearningDifficulty : 'dynamic'
     });
-    
-    console.log(`🎮 Game started in ${mode} mode`);
   }
 
   /**

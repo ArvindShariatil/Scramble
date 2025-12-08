@@ -129,7 +129,6 @@ export class AnagramGeneratorV3 {
       }
 
       // Mode 2: Hybrid falls back to curated
-      console.warn('API generation failed, falling back to curated words');
     }
 
     // Step 3: Fallback to curated (hybrid mode only)
@@ -185,8 +184,6 @@ export class AnagramGeneratorV3 {
         return anagram;
 
       } catch (error) {
-        console.warn(`API generation attempt ${attempt}/${maxRetries} failed:`, error);
-        
         // If WordScrambler error (e.g., all identical letters), retry with different word
         if (attempt < maxRetries) {
           continue;
@@ -211,7 +208,6 @@ export class AnagramGeneratorV3 {
     const availableAnagrams = ANAGRAM_SETS[difficulty] || [];
 
     if (availableAnagrams.length === 0) {
-      console.warn(`No anagrams available for difficulty level ${difficulty}`);
       return null;
     }
 
@@ -232,7 +228,6 @@ export class AnagramGeneratorV3 {
 
     // If no unused anagrams, reset the used set for this difficulty
     if (filteredAnagrams.length === 0 && options.excludeUsed !== false) {
-      console.log(`All anagrams used for difficulty ${difficulty}, resetting...`);
       this.resetUsedAnagrams(difficulty);
       
       // Re-filter without used anagram restriction
@@ -265,16 +260,11 @@ export class AnagramGeneratorV3 {
    * @returns Object with category and hint text
    */
   private async getContextualHint(word: string): Promise<{ category: string; hint: string }> {
-    console.log(`🔧 Getting contextual hint for word: "${word}"`);
-    
     try {
       // Check if API key is configured
       const apiKey = import.meta.env.VITE_WORDS_API_KEY;
       if (!apiKey) {
-        console.log('Words API key not configured - using fallback hints');
-        const fallback = this.getFallbackHint(word);
-        console.log('✅ Fallback hint generated:', fallback);
-        return fallback;
+        return this.getFallbackHint(word);
       }
       
       const result = await this.wordsAPI.validateWord(word);
@@ -309,7 +299,6 @@ export class AnagramGeneratorV3 {
       }
     } catch (error) {
       // Silently fall back - don't show errors to user
-      console.log(`Using fallback hint for "${word}"`);
     }
     
     // Fallback hint
@@ -323,8 +312,6 @@ export class AnagramGeneratorV3 {
   private getFallbackHint(word: string): { category: string; hint: string } {
     const length = word.length;
     const firstLetter = word[0].toUpperCase();
-    
-    console.log(`📝 Generating fallback hint for: "${word}"`);
     
     // Generate helpful fallback based on word characteristics
     let hint = '';
@@ -355,7 +342,6 @@ export class AnagramGeneratorV3 {
       category = 'word';
     }
     
-    console.log(`✨ Generated hint: category="${category}", hint="${hint}"`);
     return { category, hint };
   }
 
@@ -424,9 +410,8 @@ export class AnagramGeneratorV3 {
   /**
    * Track analytics event (placeholder for actual analytics integration)
    */
-  private trackAnalytics(event: string, data: Record<string, unknown>): void {
+  private trackAnalytics(_event: string, _data: Record<string, unknown>): void {
     // TODO: Integrate with actual analytics system (SCRAM-024)
-    console.log(`[Analytics] ${event}`, data);
   }
 
   /**
