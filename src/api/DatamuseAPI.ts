@@ -30,9 +30,12 @@ interface DifficultyParams {
  * Custom error for Datamuse API failures
  */
 export class DatamuseAPIError extends Error {
-  constructor(message: string, public originalError?: unknown) {
+  originalError?: unknown;
+  
+  constructor(message: string, originalError?: unknown) {
     super(message);
     this.name = 'DatamuseAPIError';
+    this.originalError = originalError;
   }
 }
 

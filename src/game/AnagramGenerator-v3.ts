@@ -163,8 +163,12 @@ export class AnagramGeneratorV3 {
           id: `generated-${Date.now()}-${word}`,
           scrambled: scrambled,
           solution: word,
+          difficulty: difficulty as 1 | 2 | 3 | 4 | 5,
           category: 'API Generated Word',
-          hint: `${word.length} letters`,
+          hints: {
+            category: 'General',
+            firstLetter: word[0].toUpperCase()
+          },
         };
 
         return anagram;

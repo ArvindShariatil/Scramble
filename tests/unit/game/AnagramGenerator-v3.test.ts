@@ -219,8 +219,12 @@ describe('AnagramGenerator v3 - SCRAM-022', () => {
         id: expect.stringMatching(/^generated-\d+-example$/),
         scrambled: 'elpmaxe',
         solution: 'example',
+        difficulty: 4,
         category: 'API Generated Word',
-        hint: '7 letters',
+        hints: {
+          category: 'General',
+          firstLetter: 'E'
+        },
       });
     });
 
