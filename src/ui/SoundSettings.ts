@@ -57,6 +57,18 @@ export class SoundSettings {
           <span class="feedback-volume-display">40%</span>
         </div>
         
+        <div class="setting-group">
+          <label class="setting-label">Word Generation Mode</label>
+          <select class="word-mode-selector" aria-label="Word generation mode selection">
+            <option value="hybrid">Hybrid (Recommended)</option>
+            <option value="curated">Curated Only</option>
+            <option value="unlimited-only">Unlimited Only</option>
+          </select>
+          <div class="mode-description text-caption" style="margin-top: 8px; color: var(--dusty-blue); font-size: 0.75rem;">
+            Hybrid: Try online words, fallback to 82 curated. Zero risk.
+          </div>
+        </div>
+        
         <div class="settings-actions">
           <button class="btn btn-secondary test-sounds-btn">Test Sounds</button>
           <button class="btn settings-close-btn">Close</button>
@@ -128,6 +140,36 @@ export class SoundSettings {
       soundManager.testSounds();
     });
 
+    // Word mode selector
+    const wordModeSelector = panel.querySelector('.word-mode-selector') as HTMLSelectElement;
+    wordModeSelector.addEventListener('change', () => {
+      const mode = wordModeSelector.value as 'curated' | 'hybrid' | 'unlimited-only';
+      
+      // Update mode description
+      const modeDescription = panel.querySelector('.mode-description') as HTMLElement;
+      if (mode === 'curated') {
+        modeDescription.textContent = 'Curated: Uses only 82 handpicked words. Offline compatible.';
+      } else if (mode === 'hybrid') {
+        modeDescription.textContent = 'Hybrid: Try online words, fallback to 82 curated. Zero risk.';
+      } else {
+        modeDescription.textContent = 'Unlimited: Requires online connection. No curated fallback.';
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('scramble-word-mode', mode);
+      
+      // Track analytics
+      analytics.track(AnalyticsEvent.SETTINGS_CHANGED, {
+        setting: 'word_mode',
+        value: mode
+      });
+      
+      // Dispatch custom event for GameUI to listen
+      window.dispatchEvent(new CustomEvent('wordModeChanged', { detail: { mode } }));
+      
+      soundManager.playButtonClick();
+    });
+    
     // Close button
     const closeBtn = panel.querySelector('.settings-close-btn') as HTMLButtonElement;
     closeBtn.addEventListener('click', () => {
@@ -170,6 +212,21 @@ export class SoundSettings {
     const feedbackDisplay = this.container.querySelector('.feedback-volume-display') as HTMLElement;
     feedbackSlider.value = (config.feedbackVolume * 100).toString();
     feedbackDisplay.textContent = `${Math.round(config.feedbackVolume * 100)}%`;
+    
+    // Update word mode selector
+    const wordModeSelector = this.container.querySelector('.word-mode-selector') as HTMLSelectElement;
+    const savedMode = localStorage.getItem('scramble-word-mode') || 'hybrid';
+    wordModeSelector.value = savedMode;
+    
+    // Update mode description
+    const modeDescription = this.container.querySelector('.mode-description') as HTMLElement;
+    if (savedMode === 'curated') {
+      modeDescription.textContent = 'Curated: Uses only 82 handpicked words. Offline compatible.';
+    } else if (savedMode === 'hybrid') {
+      modeDescription.textContent = 'Hybrid: Try online words, fallback to 82 curated. Zero risk.';
+    } else {
+      modeDescription.textContent = 'Unlimited: Requires online connection. No curated fallback.';
+    }
   }
 
   public show(): void {

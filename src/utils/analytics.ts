@@ -120,9 +120,15 @@ export const AnalyticsEvent = {
   SOUND_TOGGLED: 'sound_toggled',
   VOLUME_CHANGED: 'volume_changed',
   SETTINGS_OPENED: 'settings_opened',
+  SETTINGS_CHANGED: 'settings_changed',
   ANALYTICS_VIEWED: 'analytics_viewed',
   DATA_EXPORTED: 'data_exported',
   DATA_CLEARED: 'data_cleared',
+  
+  // Epic 6 Events
+  WORD_MODE_CHANGED: 'word_mode_changed',
+  OFFLINE_DETECTED: 'offline_detected',
+  ONLINE_DETECTED: 'online_detected',
   
   // Performance Events
   LOAD_TIME_MEASURED: 'load_time_measured',

@@ -62,6 +62,8 @@ export class GameUI {
     
     this.initializeTimer();
     this.setupKeyboardShortcuts();
+    this.setupOnlineOfflineDetection();
+    this.setupWordModeChangeListener();
   }
 
   private setupKeyboardShortcuts(): void {
@@ -313,13 +315,49 @@ export class GameUI {
     gameFooter.className = 'game-footer';
     gameFooter.appendChild(settingsBtn);
     
-    // Create heading
+    // Create heading with mode badge
     const heading = document.createElement('h1');
     heading.className = 'game-heading';
     heading.textContent = 'SCRAMBLE';
     
+    // Create header container with heading and badges
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'game-header-container';
+    
+    // Mode badge (shows current word generation mode)
+    const modeBadge = document.createElement('div');
+    modeBadge.className = 'mode-badge';
+    modeBadge.setAttribute('aria-label', 'Current word generation mode');
+    const savedMode = localStorage.getItem('scramble-word-mode') || 'hybrid';
+    modeBadge.textContent = savedMode === 'hybrid' ? '🔄 Hybrid' : savedMode === 'curated' ? '📚 Curated' : '🌐 Unlimited';
+    modeBadge.title = savedMode === 'hybrid' 
+      ? 'Hybrid mode: Online words with curated fallback' 
+      : savedMode === 'curated' 
+      ? 'Curated mode: 82 handpicked words only' 
+      : 'Unlimited mode: Online words only';
+    
+    // Offline detection banner (hidden by default)
+    const offlineBanner = document.createElement('div');
+    offlineBanner.className = 'offline-banner';
+    offlineBanner.setAttribute('aria-live', 'polite');
+    offlineBanner.innerHTML = '📡 Offline - Using curated words';
+    offlineBanner.style.display = 'none';
+    
+    // Loading indicator (hidden by default)
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.setAttribute('aria-live', 'polite');
+    loadingIndicator.setAttribute('aria-label', 'Loading new word');
+    loadingIndicator.innerHTML = '<div class="spinner"></div><span>Generating word...</span>';
+    loadingIndicator.style.display = 'none';
+    
+    headerContainer.appendChild(heading);
+    headerContainer.appendChild(modeBadge);
+    
     // Assemble the complete layout
-    this.container.appendChild(heading);
+    this.container.appendChild(headerContainer);
+    this.container.appendChild(offlineBanner);
+    this.container.appendChild(loadingIndicator);
     this.container.appendChild(this.timerScoreContainer);
     this.container.appendChild(this.scrambledContainer);
     this.container.appendChild(this.inputContainer);
@@ -831,5 +869,104 @@ export class GameUI {
     const streakBonus = this.currentStreak > 1 ? (this.currentStreak - 1) * 10 : 0;
     
     return Math.round((baseScore + timeBonus + streakBonus) * difficultyMultiplier);
+  }
+
+  /**
+   * Show loading indicator (for API word generation >100ms)
+   */
+  public showLoading(): void {
+    const loadingIndicator = this.container.querySelector('.loading-indicator') as HTMLElement;
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'flex';
+      loadingIndicator.setAttribute('aria-busy', 'true');
+    }
+  }
+
+  /**
+   * Hide loading indicator
+   */
+  public hideLoading(): void {
+    const loadingIndicator = this.container.querySelector('.loading-indicator') as HTMLElement;
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'none';
+      loadingIndicator.setAttribute('aria-busy', 'false');
+    }
+  }
+
+  /**
+   * Update mode badge based on current word generation mode
+   */
+  private updateModeBadge(): void {
+    const modeBadge = this.container.querySelector('.mode-badge') as HTMLElement;
+    if (!modeBadge) return;
+    
+    const mode = localStorage.getItem('scramble-word-mode') || 'hybrid';
+    
+    if (mode === 'hybrid') {
+      modeBadge.textContent = '🔄 Hybrid';
+      modeBadge.title = 'Hybrid mode: Online words with curated fallback';
+    } else if (mode === 'curated') {
+      modeBadge.textContent = '📚 Curated';
+      modeBadge.title = 'Curated mode: 82 handpicked words only';
+    } else {
+      modeBadge.textContent = '🌐 Unlimited';
+      modeBadge.title = 'Unlimited mode: Online words only';
+    }
+  }
+
+  /**
+   * Setup online/offline detection
+   */
+  private setupOnlineOfflineDetection(): void {
+    const offlineBanner = this.container.querySelector('.offline-banner') as HTMLElement;
+    if (!offlineBanner) return;
+    
+    const updateOnlineStatus = () => {
+      if (!navigator.onLine) {
+        offlineBanner.style.display = 'block';
+        analytics.track(AnalyticsEvent.OFFLINE_DETECTED, {
+          timestamp: Date.now()
+        });
+      } else {
+        offlineBanner.style.display = 'none';
+      }
+    };
+    
+    // Check initial state
+    updateOnlineStatus();
+    
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      offlineBanner.style.display = 'none';
+      analytics.track(AnalyticsEvent.ONLINE_DETECTED, {
+        timestamp: Date.now()
+      });
+    });
+    
+    window.addEventListener('offline', () => {
+      offlineBanner.style.display = 'block';
+      analytics.track(AnalyticsEvent.OFFLINE_DETECTED, {
+        timestamp: Date.now()
+      });
+    });
+  }
+
+  /**
+   * Listen for word mode changes from settings panel
+   */
+  private setupWordModeChangeListener(): void {
+    window.addEventListener('wordModeChanged', ((event: CustomEvent) => {
+      const { mode } = event.detail;
+      console.log('🔄 Word mode changed to:', mode);
+      
+      // Update mode badge
+      this.updateModeBadge();
+      
+      // Track analytics
+      analytics.track(AnalyticsEvent.WORD_MODE_CHANGED, {
+        mode,
+        timestamp: Date.now()
+      });
+    }) as EventListener);
   }
 }

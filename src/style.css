@@ -1238,6 +1238,181 @@ body.analytics-open {
 
 /* Desktop optimized analytics */
 
+/* Epic 6: UI Integration Styles */
+
+/* Header container with mode badge */
+.game-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: var(--gap-large);
+}
+
+/* Mode badge indicator */
+.mode-badge {
+  background: var(--dusty-blue);
+  color: var(--soft-white);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: help;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.mode-badge:hover {
+  background: var(--muted-coral);
+  transform: scale(1.05);
+}
+
+/* Offline detection banner */
+.offline-banner {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: var(--border-radius);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-subtle);
+  margin-bottom: var(--gap-medium);
+  animation: slideInDown 0.3s ease;
+  width: 100%;
+  max-width: 600px;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading indicator */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--warm-cream);
+  padding: 16px 24px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  margin-bottom: var(--gap-medium);
+  width: 100%;
+  max-width: 600px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loading-indicator span {
+  font-size: 0.9rem;
+  color: var(--gentle-gray);
+  font-weight: 500;
+}
+
+/* Spinner animation */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--dusty-blue);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Word mode selector in settings */
+.word-mode-selector {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gentle-gray);
+  background: var(--soft-white);
+  border: 2px solid var(--dusty-blue);
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-family: inherit;
+}
+
+.word-mode-selector:hover {
+  border-color: var(--muted-coral);
+  background: var(--warm-cream);
+}
+
+.word-mode-selector:focus {
+  outline: none;
+  border-color: var(--muted-coral);
+  box-shadow: 0 0 0 3px rgba(255, 138, 101, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .game-header-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .mode-badge {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+  }
+  
+  .offline-banner {
+    font-size: 0.8rem;
+    padding: 10px 16px;
+  }
+  
+  .loading-indicator {
+    padding: 12px 20px;
+  }
+  
+  .loading-indicator span {
+    font-size: 0.8rem;
+  }
+  
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-heading {
+    font-size: 36px;
+  }
+  
+  .mode-badge {
+    font-size: 0.65rem;
+  }
+}
+
 /* ============================================
    TIMEOUT SOLUTION OVERLAY (SCRAM-016)
    ============================================ */
