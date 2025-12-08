@@ -617,29 +617,21 @@ export class GameUI {
       timeSpent: 60
     });
 
-    // Encouraging messages pool
-    const encouragements = [
-      "Keep going! You've got this! 💪",
-      "Learning happens with practice! 🌟",
-      "Every puzzle makes you stronger! 🎯",
-      "Don't give up, champion! ⭐",
-      "Progress over perfection! 🚀"
-    ];
-
-    const randomEncouragement = encouragements[
-      Math.floor(Math.random() * encouragements.length)
-    ];
+    // Game Over - Show final stats
+    const finalMessage = this.currentStreak > 0 
+      ? `Great effort! You solved ${this.currentStreak} ${this.currentStreak === 1 ? 'word' : 'words'}! 🎯`
+      : "Better luck next time! Keep practicing! 💪";
 
     // Create overlay
     const overlay = document.createElement('div');
-    overlay.className = 'solution-overlay timeout-reveal';
+    overlay.className = 'solution-overlay timeout-reveal game-over';
     overlay.setAttribute('role', 'alert');
     overlay.setAttribute('aria-live', 'assertive');
     overlay.setAttribute('aria-atomic', 'true');
 
     overlay.innerHTML = `
       <div class="solution-content">
-        <h3 class="timeout-header">⏰ Time's Up!</h3>
+        <h3 class="timeout-header">⏰ Time's Up - Game Over!</h3>
         <div class="scrambled-reference">
           <span class="label">Scrambled:</span>
           <span class="letters">${this.currentAnagram.scrambled}</span>
@@ -652,16 +644,30 @@ export class GameUI {
         ${this.currentAnagram.category ? `
           <div class="solution-hint">
             <span class="hint-icon">💡</span>
-            <span class="hint-text">Category: ${this.currentAnagram.category}</span>
+            <span class="hint-text">Hint: ${this.currentAnagram.hints.category}</span>
           </div>
         ` : ''}
-        <p class="encouragement">${randomEncouragement}</p>
-        <div class="auto-progress">
-          <span class="progress-text">Next puzzle in 5 seconds...</span>
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
+        <div class="game-over-stats">
+          <h4 class="stats-header">📊 Final Stats</h4>
+          <div class="stat-row">
+            <span class="stat-label">Words Solved:</span>
+            <span class="stat-value">${this.correctAnswers}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Current Streak:</span>
+            <span class="stat-value">${this.currentStreak}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Best Streak:</span>
+            <span class="stat-value">${this.bestStreak}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Total Score:</span>
+            <span class="stat-value">${this.totalScore}</span>
           </div>
         </div>
+        <p class="encouragement">${finalMessage}</p>
+        <button class="play-again-btn">Play Again 🎮</button>
       </div>
     `;
 
@@ -673,28 +679,15 @@ export class GameUI {
       overlay.classList.add('visible');
     });
 
-    // Allow early dismissal with Escape key
-    const dismissHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    // Play Again button handler
+    const playAgainBtn = overlay.querySelector('.play-again-btn') as HTMLButtonElement;
+    if (playAgainBtn) {
+      playAgainBtn.addEventListener('click', () => {
+        soundManager.playButtonClick();
         this.dismissSolutionOverlay(overlay);
-        document.removeEventListener('keydown', dismissHandler);
-        analytics.track(AnalyticsEvent.TIMEOUT_SOLUTION_DISMISSED_EARLY, {
-          timeShown: 'early',
-          method: 'escape_key'
-        });
-      }
-    };
-    document.addEventListener('keydown', dismissHandler);
-
-    // Auto-remove after 5 seconds and proceed
-    setTimeout(async () => {
-      this.dismissSolutionOverlay(overlay);
-      document.removeEventListener('keydown', dismissHandler);
-      
-      // Proceed to next anagram
-      await this.generateNewAnagram();
-      this.resetGameState();
-    }, 5000);
+        this.restartGame();
+      });
+    }
   }
 
   /**
@@ -961,6 +954,30 @@ export class GameUI {
     const streakBonus = this.currentStreak > 1 ? (this.currentStreak - 1) * 10 : 0;
     
     return Math.round((baseScore + timeBonus + streakBonus) * difficultyMultiplier);
+  }
+
+  /**
+   * Restart the game with a fresh session
+   */
+  private async restartGame(): Promise<void> {
+    // Reset all game stats
+    this.correctAnswers = 0;
+    this.currentStreak = 0;
+    this.totalScore = 0;
+    this.skipCount = 0;
+    
+    // Update displays
+    this.updateScoreDisplay();
+    
+    // Track game restart
+    analytics.track(AnalyticsEvent.SESSION_STARTED, {
+      mode: this.gameMode,
+      restartedAt: Date.now()
+    });
+    
+    // Show mode selection again or start directly
+    this.modeModalShown = false;
+    this.showGameModeModal();
   }
 
   /**
