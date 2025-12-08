@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { GameEngine } from '../src/game/GameEngine'
+import { GameStore } from '../src/game/GameStore'
 import { StorageHelper } from '../src/utils/storage'
 
 describe('SCRAM-001 Project Setup', () => {
-  it('should initialize GameEngine successfully', () => {
-    const engine = new GameEngine()
-    expect(engine).toBeDefined()
+  it('should initialize GameStore successfully', () => {
+    const store = new GameStore()
+    expect(store).toBeDefined()
+    expect(store.getState()).toBeDefined()
   })
   
   it('should handle localStorage operations', () => {
@@ -18,7 +19,7 @@ describe('SCRAM-001 Project Setup', () => {
   it('should have proper TypeScript module structure', () => {
     // This test verifies our architecture modules are properly structured
     expect(async () => {
-      await import('../src/game/GameEngine')
+      await import('../src/game/GameStore')
       await import('../src/api/WordsAPI')
       await import('../src/ui/GameUI')
       await import('../src/data/anagrams')

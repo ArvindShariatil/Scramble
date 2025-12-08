@@ -31,4 +31,12 @@ export class StorageHelper {
       return null;
     }
   }
+  
+  static remove(key: string) {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Failed to remove from localStorage:', error);
+    }
+  }
 }
