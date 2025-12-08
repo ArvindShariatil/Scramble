@@ -4,7 +4,7 @@
   "description": "Web based gaming app",
   "main": "src/js/index.js",
   "scripts": {
-    "start": "npx http-server -p 8080",
+    "start": "python3 -m http.server 8080 || python -m http.server 8080",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
