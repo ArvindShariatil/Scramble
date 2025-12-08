@@ -1,0 +1,25 @@
+{
+  "name": "sramble",
+  "version": "1.0.0",
+  "description": "Web based gaming app",
+  "main": "src/js/index.js",
+  "scripts": {
+    "start": "npx http-server -p 8080",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArvindShariatil/Sramble.git"
+  },
+  "keywords": [
+    "game",
+    "web",
+    "gaming"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ArvindShariatil/Sramble/issues"
+  },
+  "homepage": "https://github.com/ArvindShariatil/Sramble#readme"
+}
