@@ -11,7 +11,10 @@ import { soundManager } from '../utils/SoundManager.ts'
 import { SoundSettings } from './SoundSettings.ts'
 import { analytics, AnalyticsEvent } from '../utils/analytics.ts'
 import { analyticsDashboard } from './AnalyticsDashboard.ts'
-import { getAllAnagrams, type AnagramSet } from '../data/anagrams.ts'
+import type { AnagramSet } from '../data/anagrams.ts'
+import { AnagramGeneratorV3 } from '../game/AnagramGenerator-v3.ts'
+
+export type GameMode = 'streak' | 'learning' | 'party';
 
 export class GameUI {
   private container: HTMLElement;
@@ -31,9 +34,14 @@ export class GameUI {
   private currentStreak: number = 0;
   private bestStreak: number = 0;
   private totalScore: number = 0;
-  private allAnagrams: AnagramSet[] = [];
+  private anagramGenerator: AnagramGeneratorV3;
   private currentAnagram: AnagramSet | null = null;
-  private usedAnagramIds: Set<string> = new Set();
+  
+  // Game mode properties
+  private gameMode: GameMode = 'streak';
+  private currentDifficulty: number = 1;
+  private selectedLearningDifficulty: number = 1;
+  private modeModalShown: boolean = false;
 
   constructor() {
     console.log('🎨 GameUI initialized - Calm Playground design');
@@ -52,15 +60,14 @@ export class GameUI {
     this.enhancedInput = this.createEnhancedInput();
     this.soundSettings = new SoundSettings();
     
-    // Load anagram database
-    this.allAnagrams = getAllAnagrams();
+    // Initialize Epic 6 unlimited word generator (hybrid mode with API)
+    this.anagramGenerator = new AnagramGeneratorV3(1);
     
     this.setupLayout();
     
-    // Generate first anagram before starting timer
-    this.generateNewAnagram();
+    // Show game mode selection modal
+    this.showGameModeModal();
     
-    this.initializeTimer();
     this.setupKeyboardShortcuts();
     this.setupOnlineOfflineDetection();
     this.setupWordModeChangeListener();
@@ -114,9 +121,12 @@ export class GameUI {
           <div class="letter-box">R</div>
         </div>
       </div>
-      <div class="hint-container">
-        <div class="hint-text" style="margin-top: 8px; color: var(--muted-coral); font-size: 0.875rem; font-weight: 500;">
+      <div class="hint-container" style="margin-top: 8px;">
+        <div class="hint-text" style="color: var(--muted-coral); font-size: 0.875rem; font-weight: 500; text-align: center;">
           💡 Hint: Loading...
+        </div>
+        <div class="difficulty-badge" style="font-size: 0.75rem; padding: 4px 12px; border-radius: 12px; font-weight: 600; background: var(--sage-green); color: white; margin-top: 8px; display: inline-block; text-align: center; width: 100%;">
+          ⭐ Level 1
         </div>
       </div>
     `;
@@ -211,8 +221,8 @@ export class GameUI {
       });
       
       // Generate new anagram after brief success display
-      setTimeout(() => {
-        this.generateNewAnagram();
+      setTimeout(async () => {
+        await this.generateNewAnagram();
         this.resetGameState();
       }, 1500);
     } else {
@@ -310,20 +320,6 @@ export class GameUI {
       analytics.track(AnalyticsEvent.SETTINGS_OPENED);
     });
     
-    // Create footer with settings button
-    const gameFooter = document.createElement('div');
-    gameFooter.className = 'game-footer';
-    gameFooter.appendChild(settingsBtn);
-    
-    // Create heading with mode badge
-    const heading = document.createElement('h1');
-    heading.className = 'game-heading';
-    heading.textContent = 'SCRAMBLE';
-    
-    // Create header container with heading and badges
-    const headerContainer = document.createElement('div');
-    headerContainer.className = 'game-header-container';
-    
     // Mode badge (shows current word generation mode)
     const modeBadge = document.createElement('div');
     modeBadge.className = 'mode-badge';
@@ -335,6 +331,24 @@ export class GameUI {
       : savedMode === 'curated' 
       ? 'Curated mode: 82 handpicked words only' 
       : 'Unlimited mode: Online words only';
+    
+    // Create footer with settings button and mode badge
+    const gameFooter = document.createElement('div');
+    gameFooter.className = 'game-footer';
+    gameFooter.style.display = 'flex';
+    gameFooter.style.justifyContent = 'space-between';
+    gameFooter.style.alignItems = 'center';
+    gameFooter.appendChild(settingsBtn);
+    gameFooter.appendChild(modeBadge);
+    
+    // Create heading
+    const heading = document.createElement('h1');
+    heading.className = 'game-heading';
+    heading.textContent = 'SCRAMBLE';
+    
+    // Create header container with heading
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'game-header-container';
     
     // Offline detection banner (hidden by default)
     const offlineBanner = document.createElement('div');
@@ -352,7 +366,6 @@ export class GameUI {
     loadingIndicator.style.display = 'none';
     
     headerContainer.appendChild(heading);
-    headerContainer.appendChild(modeBadge);
     
     // Assemble the complete layout
     this.container.appendChild(headerContainer);
@@ -454,8 +467,8 @@ export class GameUI {
     this.showSkipFeedback();
     
     // Generate new anagram
-    setTimeout(() => {
-      this.generateNewAnagram();
+    setTimeout(async () => {
+      await this.generateNewAnagram();
       this.resetGameState();
     }, 500); // Brief delay for smooth transition
     
@@ -687,12 +700,12 @@ export class GameUI {
     document.addEventListener('keydown', dismissHandler);
 
     // Auto-remove after 5 seconds and proceed
-    setTimeout(() => {
+    setTimeout(async () => {
       this.dismissSolutionOverlay(overlay);
       document.removeEventListener('keydown', dismissHandler);
       
       // Proceed to next anagram
-      this.generateNewAnagram();
+      await this.generateNewAnagram();
       this.resetGameState();
     }, 5000);
   }
@@ -712,9 +725,11 @@ export class GameUI {
    */
   private validateAnswer(attempt: string): boolean {
     const normalizedAttempt = attempt.toUpperCase().trim();
-    const expectedWord = this.getCurrentWord();
+    const expectedWord = this.getCurrentWord().toUpperCase().trim();
     
-    // For demo, check against known correct answer
+    console.log(`🔍 Validation: "${normalizedAttempt}" === "${expectedWord}"`);
+    
+    // Case-insensitive comparison
     return normalizedAttempt === expectedWord;
   }
 
@@ -754,45 +769,95 @@ export class GameUI {
   }
 
   /**
-   * Generate a new anagram from the database
+   * Generate a new anagram using Epic 6 API (frequency-based difficulty)
    */
-  private generateNewAnagram(): void {
-    // If we've used all anagrams, reset the pool
-    if (this.usedAnagramIds.size >= this.allAnagrams.length) {
-      this.usedAnagramIds.clear();
-      console.log('🔄 Anagram pool reset - all words have been used!');
+  private async generateNewAnagram(): Promise<void> {
+    let targetDifficulty: 1 | 2 | 3 | 4 | 5;
+    
+    // Determine difficulty based on game mode
+    switch (this.gameMode) {
+      case 'streak':
+        // Progressive difficulty: starts at 1, increases every 3 correct answers
+        targetDifficulty = Math.min(5, 1 + Math.floor(this.correctAnswers / 3)) as 1 | 2 | 3 | 4 | 5;
+        this.currentDifficulty = targetDifficulty;
+        break;
+      
+      case 'learning':
+        // Fixed difficulty selected by user
+        targetDifficulty = this.selectedLearningDifficulty as 1 | 2 | 3 | 4 | 5;
+        this.currentDifficulty = targetDifficulty;
+        break;
+      
+      case 'party':
+        // Random difficulty for variety and excitement!
+        targetDifficulty = (Math.floor(Math.random() * 5) + 1) as 1 | 2 | 3 | 4 | 5;
+        this.currentDifficulty = targetDifficulty;
+        break;
+      
+      default:
+        targetDifficulty = 1;
     }
     
-    // Get available anagrams (not yet used)
-    const availableAnagrams = this.allAnagrams.filter(a => !this.usedAnagramIds.has(a.id));
-    
-    // Pick a random anagram from available pool
-    const randomIndex = Math.floor(Math.random() * availableAnagrams.length);
-    this.currentAnagram = availableAnagrams[randomIndex];
-    
-    // Mark this anagram as used
-    this.usedAnagramIds.add(this.currentAnagram.id);
-    
-    // Set the scrambled letters
-    this.currentScrambledLetters = this.currentAnagram.scrambled.split('');
-    this.updateScrambledDisplay();
-    
-    // Update enhanced input configuration
-    this.enhancedInput.updateConfig({
-      scrambledLetters: this.currentScrambledLetters,
-      expectedLength: this.currentScrambledLetters.length
-    });
-    
-    // Restart timer for new anagram
-    this.startNewTimer();
-    
-    // Track new anagram presented
-    analytics.track(AnalyticsEvent.ANAGRAM_PRESENTED, {
-      word: this.currentAnagram.solution,
-      difficulty: this.getCurrentDifficulty()
-    });
-    
-    console.log(`🎯 New anagram: ${this.currentAnagram.scrambled} (Solution: ${this.currentAnagram.solution})`);
+    try {
+      console.log(`🎲 Requesting anagram at difficulty ${targetDifficulty} (mode: ${this.gameMode})`);
+      
+      // Get anagram from Epic 6 generator (API with cache + curated fallback)
+      const anagram = await this.anagramGenerator.getAnagram({
+        difficulty: targetDifficulty,
+        excludeUsed: true
+      });
+      
+      console.log(`📦 Received anagram:`, anagram);
+      
+      if (!anagram) {
+        console.error('❌ Failed to generate anagram');
+        return;
+      }
+      
+      // Validate anagram has scrambled letters
+      if (!anagram.scrambled || anagram.scrambled.trim().length === 0) {
+        console.error('❌ Invalid anagram - no scrambled letters:', anagram);
+        return;
+      }
+      
+      this.currentAnagram = anagram;
+      
+      // Set the scrambled letters
+      this.currentScrambledLetters = this.currentAnagram.scrambled.split('');
+      
+      // Defensive check - ensure we have letters
+      if (this.currentScrambledLetters.length === 0) {
+        console.error('❌ No scrambled letters after split:', this.currentAnagram.scrambled);
+        return;
+      }
+      
+      console.log(`📝 Scrambled letters array:`, this.currentScrambledLetters);
+      
+      this.updateScrambledDisplay();
+      
+      // Update enhanced input configuration
+      this.enhancedInput.updateConfig({
+        scrambledLetters: this.currentScrambledLetters,
+        expectedLength: this.currentScrambledLetters.length
+      });
+      
+      // Restart timer for new anagram
+      this.startNewTimer();
+      
+      // Track new anagram presented
+      analytics.track(AnalyticsEvent.ANAGRAM_PRESENTED, {
+        word: this.currentAnagram.solution,
+        difficulty: this.getCurrentDifficulty(),
+        source: (anagram as any).source || 'unknown'
+      });
+      
+      console.log(`🎯 New anagram: ${this.currentAnagram.scrambled} (Solution: ${this.currentAnagram.solution}, Difficulty: ${targetDifficulty})`);
+      
+    } catch (error) {
+      console.error('❌ Error generating anagram:', error);
+      // Show user-friendly error
+      this.showValidationFeedback(false, 'Unable to generate word. Please check your connection.');
+    }
   }
 
   /**
@@ -800,15 +865,31 @@ export class GameUI {
    */
   private updateScrambledDisplay(): void {
     const letterContainer = this.scrambledContainer.querySelector('.scrambled-letters');
-    if (letterContainer) {
-      letterContainer.innerHTML = `
-        <div class="letters-row">
-          ${this.currentScrambledLetters
-            .map(letter => `<div class="letter-box">${letter}</div>`)
-            .join('')}
-        </div>
-      `;
+    if (!letterContainer) {
+      console.error('❌ Letter container not found');
+      return;
     }
+    
+    if (!this.currentScrambledLetters || this.currentScrambledLetters.length === 0) {
+      console.error('❌ No scrambled letters to display');
+      return;
+    }
+    
+    const lettersHTML = this.currentScrambledLetters
+      .map(letter => {
+        // Ensure letter is not empty
+        const displayLetter = letter && letter.trim() ? letter : '?';
+        return `<div class="letter-box">${displayLetter}</div>`;
+      })
+      .join('');
+    
+    letterContainer.innerHTML = `
+      <div class="letters-row">
+        ${lettersHTML}
+      </div>
+    `;
+    
+    console.log(`✅ Display updated with ${this.currentScrambledLetters.length} letters`);
     
     // Update hint text
     this.updateHintDisplay();
@@ -820,9 +901,51 @@ export class GameUI {
   private updateHintDisplay(): void {
     const hintText = this.scrambledContainer.querySelector('.hint-text');
     if (hintText && this.currentAnagram) {
-      const category = this.currentAnagram.hints.category;
-      hintText.textContent = `💡 Hint: ${category}`;
+      // Use contextual hint from API
+      const hint = this.currentAnagram.hints.category;
+      
+      // Show contextual hint without letter count
+      hintText.textContent = `💡 Hint: ${hint}`;
     }
+    
+    // Update difficulty badge
+    this.updateDifficultyBadge();
+  }
+
+  /**
+   * Update difficulty badge to show current word difficulty
+   */
+  private updateDifficultyBadge(): void {
+    const badge = this.scrambledContainer.querySelector('.difficulty-badge');
+    if (!badge || !this.currentAnagram) return;
+    
+    const difficulty = this.currentAnagram.difficulty;
+    const stars = '⭐'.repeat(difficulty);
+    
+    // Difficulty labels
+    const labels: Record<number, string> = {
+      1: 'Beginner',
+      2: 'Easy',
+      3: 'Medium',
+      4: 'Hard',
+      5: 'Expert'
+    };
+    
+    const label = labels[difficulty] || 'Unknown';
+    
+    // Color coding by difficulty
+    const colors: Record<number, string> = {
+      1: 'var(--sage-green)',      // Calm green
+      2: '#90B77D',                // Light green
+      3: '#E8C078',                // Warm yellow
+      4: '#D4A574',                // Orange
+      5: '#D4A5A5'                 // Soft red
+    };
+    
+    const bgColor = colors[difficulty] || 'var(--sage-green)';
+    
+    badge.textContent = `${stars} ${label}`;
+    (badge as HTMLElement).style.background = bgColor;
   }
 
   /**
@@ -912,6 +1035,174 @@ export class GameUI {
       modeBadge.textContent = '🌐 Unlimited';
       modeBadge.title = 'Unlimited mode: Online words only';
     }
+  }
+
+  /**
+   * Show game mode selection modal
+   */
+  private showGameModeModal(): void {
+    if (this.modeModalShown) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'game-mode-modal';
+    modal.innerHTML = `
+      <div class="game-mode-modal-content">
+        <h2 style="color: var(--soft-lavender); margin-bottom: 8px;">🎮 Choose Your Game Mode</h2>
+        <p style="color: var(--dusty-blue); margin-bottom: 24px; font-size: 0.9rem;">
+          Select how you want to play Scramble
+        </p>
+        
+        <div class="game-mode-options">
+          <button class="game-mode-option" data-mode="streak">
+            <div class="mode-icon">📈</div>
+            <div class="mode-title">Streak Mode</div>
+            <div class="mode-description">
+              Progressive difficulty - starts easy, gets harder as you succeed!
+              <br><span style="color: var(--muted-coral);">Perfect for challenges</span>
+            </div>
+          </button>
+          
+          <button class="game-mode-option" data-mode="learning">
+            <div class="mode-icon">🎓</div>
+            <div class="mode-title">Learning Mode</div>
+            <div class="mode-description">
+              Choose your difficulty level and practice consistently
+              <br><span style="color: var(--muted-coral);">Great for skill building</span>
+            </div>
+          </button>
+          
+          <button class="game-mode-option" data-mode="party">
+            <div class="mode-icon">🎉</div>
+            <div class="mode-title">Party Mode</div>
+            <div class="mode-description">
+              Random difficulties, fast-paced action, bonus points!
+              <br><span style="color: var(--muted-coral);">Maximum fun & variety</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add click handlers for mode selection
+    const modeButtons = modal.querySelectorAll('.game-mode-option');
+    modeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const mode = button.getAttribute('data-mode') as GameMode;
+        
+        // If learning mode, show difficulty selector
+        if (mode === 'learning') {
+          this.showDifficultySelector(modal);
+        } else {
+          this.startGameWithMode(mode);
+          modal.remove();
+        }
+      });
+    });
+    
+    this.modeModalShown = true;
+  }
+
+  /**
+   * Show difficulty selector for learning mode
+   */
+  private showDifficultySelector(modal: HTMLElement): void {
+    const content = modal.querySelector('.game-mode-modal-content');
+    if (!content) return;
+    
+    content.innerHTML = `
+      <h2 style="color: var(--soft-lavender); margin-bottom: 8px;">🎓 Learning Mode</h2>
+      <p style="color: var(--dusty-blue); margin-bottom: 24px; font-size: 0.9rem;">
+        Select your difficulty level
+      </p>
+      
+      <div class="difficulty-selector">
+        <button class="difficulty-option" data-difficulty="1">
+          <div class="difficulty-icon">⭐</div>
+          <div class="difficulty-name">Beginner</div>
+          <div class="difficulty-desc">Common everyday words</div>
+        </button>
+        
+        <button class="difficulty-option" data-difficulty="2">
+          <div class="difficulty-icon">⭐⭐</div>
+          <div class="difficulty-name">Easy</div>
+          <div class="difficulty-desc">Familiar words</div>
+        </button>
+        
+        <button class="difficulty-option" data-difficulty="3">
+          <div class="difficulty-icon">⭐⭐⭐</div>
+          <div class="difficulty-name">Medium</div>
+          <div class="difficulty-desc">Moderate vocabulary</div>
+        </button>
+        
+        <button class="difficulty-option" data-difficulty="4">
+          <div class="difficulty-icon">⭐⭐⭐⭐</div>
+          <div class="difficulty-name">Hard</div>
+          <div class="difficulty-desc">Less common words</div>
+        </button>
+        
+        <button class="difficulty-option" data-difficulty="5">
+          <div class="difficulty-icon">⭐⭐⭐⭐⭐</div>
+          <div class="difficulty-name">Expert</div>
+          <div class="difficulty-desc">Rare & challenging words</div>
+        </button>
+      </div>
+      
+      <button class="back-button" style="margin-top: 16px;">← Back to Modes</button>
+    `;
+    
+    // Add click handlers for difficulty selection
+    const difficultyButtons = content.querySelectorAll('.difficulty-option');
+    difficultyButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const difficulty = parseInt(button.getAttribute('data-difficulty') || '1');
+        this.selectedLearningDifficulty = difficulty;
+        this.startGameWithMode('learning');
+        modal.remove();
+      });
+    });
+    
+    // Back button handler
+    const backButton = content.querySelector('.back-button');
+    if (backButton) {
+      backButton.addEventListener('click', () => {
+        this.modeModalShown = false;
+        modal.remove();
+        this.showGameModeModal();
+      });
+    }
+  }
+
+  /**
+   * Start game with selected mode
+   */
+  private async startGameWithMode(mode: GameMode): Promise<void> {
+    this.gameMode = mode;
+    
+    // Set timer based on mode
+    switch (mode) {
+      case 'party':
+        this.timeRemaining = 30; // Faster pace for party mode!
+        break;
+      case 'streak':
+      case 'learning':
+      default:
+        this.timeRemaining = 60;
+    }
+    
+    // Initialize game
+    await this.generateNewAnagram();
+    this.initializeTimer();
+    
+    // Track mode selection
+    analytics.track(AnalyticsEvent.SETTINGS_CHANGED, {
+      setting: 'game_mode',
+      value: mode,
+      difficulty: mode === 'learning' ? this.selectedLearningDifficulty : 'dynamic'
+    });
+    
+    console.log(`🎮 Game started in ${mode} mode`);
   }
 
   /**

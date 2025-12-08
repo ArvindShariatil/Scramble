@@ -20,6 +20,7 @@ import { ANAGRAM_SETS } from '../data/anagrams';
 import { DatamuseAPI } from '../api/DatamuseAPI';
 import { WordScrambler } from './WordScrambler';
 import { AnagramCache } from '../utils/AnagramCache';
+import { WordsAPIClient } from '../api/WordsAPI';
 
 /**
  * Word generation modes
@@ -48,6 +49,7 @@ export class AnagramGeneratorV3 {
   private datamuseAPI: DatamuseAPI;
   private wordScrambler: WordScrambler;
   private cache: AnagramCache;
+  private wordsAPI: WordsAPIClient;
 
   constructor(
     initialDifficulty: number = 1,
@@ -62,6 +64,7 @@ export class AnagramGeneratorV3 {
     this.datamuseAPI = datamuseAPI || new DatamuseAPI();
     this.wordScrambler = wordScrambler || new WordScrambler();
     this.cache = cache || AnagramCache.getInstance();
+    this.wordsAPI = new WordsAPIClient();
     
     // Load mode from localStorage
     this.loadMode();
@@ -90,19 +93,24 @@ export class AnagramGeneratorV3 {
 
     // Mode 2 & 3: Hybrid or unlimited-only
     try {
-      // Step 1: Try cache
-      const cachedAnagram = this.cache.get(difficulty as 1 | 2 | 3 | 4 | 5);
-      if (cachedAnagram) {
-        this.markAsUsed(cachedAnagram.id);
-        this.trackAnalytics('WORD_GENERATION_SOURCE', { source: 'cache', difficulty });
-        return cachedAnagram;
+      // Step 1: Try cache (only if not excluding used words)
+      if (!options.excludeUsed) {
+        const cachedAnagram = this.cache.get(difficulty as 1 | 2 | 3 | 4 | 5);
+        if (cachedAnagram) {
+          this.markAsUsed(cachedAnagram.id);
+          this.trackAnalytics('WORD_GENERATION_SOURCE', { source: 'cache', difficulty });
+          return cachedAnagram;
+        }
       }
 
-      // Step 2: Try API generation
+      // Step 2: Try API generation (always get fresh word when excludeUsed is true)
       const apiAnagram = await this.generateFromAPI(difficulty as 1 | 2 | 3 | 4 | 5);
       if (apiAnagram) {
         this.markAsUsed(apiAnagram.id);
-        this.cache.set(difficulty as 1 | 2 | 3 | 4 | 5, apiAnagram);
+        // Only cache if we're not excluding used words (to avoid cache pollution)
+        if (!options.excludeUsed) {
+          this.cache.set(difficulty as 1 | 2 | 3 | 4 | 5, apiAnagram);
+        }
         this.trackAnalytics('WORD_GENERATION_SOURCE', { source: 'api', difficulty });
         return apiAnagram;
       }
@@ -152,21 +160,24 @@ export class AnagramGeneratorV3 {
         // Step 1: Fetch word from API
         const word = await this.datamuseAPI.getRandomWord(difficulty);
         
-        // Step 2: Scramble word
+        // Step 2: Scramble word (returns lowercase)
         const scrambled = this.wordScrambler.scramble(word);
+        
+        // Step 3: Fetch contextual hint from Words API
+        const hint = await this.getContextualHint(word);
         
         // Small delay to ensure unique timestamps (tests run very fast)
         await new Promise(resolve => setTimeout(resolve, 1));
         
-        // Step 3: Create AnagramSet
+        // Step 4: Create AnagramSet (convert to uppercase for consistency)
         const anagram: AnagramSet = {
           id: `generated-${Date.now()}-${word}`,
-          scrambled: scrambled,
-          solution: word,
+          scrambled: scrambled.toUpperCase(),
+          solution: word.toUpperCase(),
           difficulty: difficulty as 1 | 2 | 3 | 4 | 5,
-          category: 'API Generated Word',
+          category: hint.category,
           hints: {
-            category: 'General',
+            category: hint.hint,
             firstLetter: word[0].toUpperCase()
           },
         };
@@ -245,6 +256,107 @@ export class AnagramGeneratorV3 {
     this.markAsUsed(selectedAnagram.id);
 
     return selectedAnagram;
+  }
+
+  /**
+   * Get contextual hint for a word using Words API
+   * 
+   * @param word Word to get hint for
+   * @returns Object with category and hint text
+   */
+  private async getContextualHint(word: string): Promise<{ category: string; hint: string }> {
+    console.log(`🔧 Getting contextual hint for word: "${word}"`);
+    
+    try {
+      // Check if API key is configured
+      const apiKey = import.meta.env.VITE_WORDS_API_KEY;
+      if (!apiKey) {
+        console.log('Words API key not configured - using fallback hints');
+        const fallback = this.getFallbackHint(word);
+        console.log('✅ Fallback hint generated:', fallback);
+        return fallback;
+      }
+      
+      const result = await this.wordsAPI.validateWord(word);
+      
+      if (result.valid && result.definition) {
+        const def = result.definition;
+        
+        // Extract first definition
+        if (def.definitions && def.definitions.length > 0) {
+          const firstDef = def.definitions[0];
+          const partOfSpeech = firstDef.partOfSpeech || 'word';
+          let definition = firstDef.definition || '';
+          
+          // Shorten definition if too long (keep it concise)
+          if (definition.length > 60) {
+            definition = definition.substring(0, 57) + '...';
+          }
+          
+          return {
+            category: partOfSpeech,
+            hint: definition
+          };
+        }
+        
+        // Fallback to part of speech if available
+        if (def.definitions && def.definitions.length > 0) {
+          return {
+            category: def.definitions[0].partOfSpeech || 'word',
+            hint: `A ${def.definitions[0].partOfSpeech || 'word'}`
+          };
+        }
+      }
+    } catch (error) {
+      // Silently fall back - don't show errors to user
+      console.log(`Using fallback hint for "${word}"`);
+    }
+    
+    // Fallback hint
+    return this.getFallbackHint(word);
+  }
+
+  /**
+   * Generate fallback hint when API is unavailable
+   * Uses smart categorization based on word patterns
+   */
+  private getFallbackHint(word: string): { category: string; hint: string } {
+    const length = word.length;
+    const firstLetter = word[0].toUpperCase();
+    
+    console.log(`📝 Generating fallback hint for: "${word}"`);
+    
+    // Generate helpful fallback based on word characteristics
+    let hint = '';
+    let category = 'word';
+    
+    // Common word patterns
+    if (word.endsWith('ing')) {
+      category = 'verb';
+      hint = 'An action or activity';
+    } else if (word.endsWith('ly')) {
+      category = 'adverb';
+      hint = 'Describes how something is done';
+    } else if (word.endsWith('tion') || word.endsWith('sion')) {
+      category = 'noun';
+      hint = 'A thing or concept';
+    } else if (word.endsWith('er') || word.endsWith('or')) {
+      category = 'noun';
+      hint = 'A person or thing that does something';
+    } else if (word.endsWith('ed')) {
+      category = 'verb';
+      hint = 'Past tense action';
+    } else if (word.endsWith('ful') || word.endsWith('less')) {
+      category = 'adjective';
+      hint = 'Describes a quality';
+    } else {
+      // Generic hint with first letter
+      hint = `Starts with "${firstLetter}"`;
+      category = 'word';
+    }
+    
+    console.log(`✨ Generated hint: category="${category}", hint="${hint}"`);
+    return { category, hint };
   }
 
   /**

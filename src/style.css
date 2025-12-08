@@ -1238,6 +1238,199 @@ body.analytics-open {
 
 /* Desktop optimized analytics */
 
+/* ========================================
+   GAME MODE MODAL STYLES
+   ======================================== */
+
+/* Modal Overlay */
+.game-mode-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+  padding: var(--gap-medium);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Content Container */
+.game-mode-modal-content {
+  background: var(--soft-white);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 100%;
+  padding: var(--gap-large);
+  animation: slideUp 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Modal Header */
+.game-mode-modal h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 var(--gap-large) 0;
+  text-align: center;
+}
+
+/* Game Mode Options */
+.game-mode-option,
+.difficulty-option {
+  width: 100%;
+  background: var(--warm-cream);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius-small);
+  padding: var(--gap-medium);
+  margin-bottom: var(--gap-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-small);
+}
+
+.game-mode-option:hover,
+.difficulty-option:hover {
+  background: var(--sage-green);
+  border-color: var(--sage-green);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-focus);
+}
+
+.game-mode-option:active,
+.difficulty-option:active {
+  transform: translateY(0);
+}
+
+/* Mode Icon */
+.mode-icon {
+  font-size: 2rem;
+  margin-bottom: var(--gap-small);
+}
+
+/* Mode Title */
+.mode-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* Mode Description */
+.mode-description {
+  font-size: 0.95rem;
+  color: var(--gentle-gray);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Difficulty Options Specific Styles */
+.difficulty-option {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--gap-medium);
+}
+
+.difficulty-stars {
+  font-size: 1.5rem;
+  line-height: 1;
+  min-width: 120px;
+}
+
+.difficulty-info {
+  flex: 1;
+}
+
+.difficulty-info h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 4px 0;
+}
+
+.difficulty-info p {
+  font-size: 0.9rem;
+  color: var(--gentle-gray);
+  margin: 0;
+}
+
+/* Back Button */
+.back-button {
+  background: var(--dusty-blue);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-top: var(--gap-small);
+}
+
+.back-button:hover {
+  background: #8fa8b8;
+  transform: translateX(-2px);
+}
+
+.back-button:active {
+  transform: translateX(0);
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .game-mode-modal-content {
+    padding: var(--gap-medium);
+    margin: var(--gap-small);
+  }
+  
+  .game-mode-modal h2 {
+    font-size: 1.5rem;
+  }
+  
+  .mode-title {
+    font-size: 1.1rem;
+  }
+  
+  .mode-description {
+    font-size: 0.875rem;
+  }
+  
+  .difficulty-stars {
+    min-width: 100px;
+    font-size: 1.25rem;
+  }
+}
+
 /* Epic 6: UI Integration Styles */
 
 /* Header container with mode badge */
@@ -1566,7 +1759,7 @@ body.analytics-open {
 }
 
 .hint-text {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 500;
 }
 
